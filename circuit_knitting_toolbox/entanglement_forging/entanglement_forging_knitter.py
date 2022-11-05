@@ -13,7 +13,7 @@
 import time
 import logging
 from typing import List, Optional, Sequence, Tuple, Union, Any, Dict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 
 import numpy as np
 from nptyping import Float, Int, NDArray, Shape
@@ -294,8 +294,8 @@ class EntanglementForgingKnitter:
         else:
             session_ids = self._session_ids
 
-        partitioned_expval_futures = []
-        with ThreadPoolExecutor() as executor:
+        partitioned_expval_futures: Dict[Future, int] = {}
+        with ThreadPoolExecutor(thread_name_prefix="ckt_ef_estimator") as executor:
             for partition_index, (
                 tensor_ansatze_partition,
                 superposition_ansatze_partition,
@@ -312,37 +312,37 @@ class EntanglementForgingKnitter:
                 )
                 tensor_pauli_list = list(forged_operator.tensor_paulis)
                 superposition_pauli_list = list(forged_operator.superposition_paulis)
-                partitioned_expval_futures.append(
-                    executor.submit(
-                        _estimate_expvals,
-                        tensor_ansatze_partition,
-                        tensor_pauli_list,
-                        superposition_ansatze_partition,
-                        superposition_pauli_list,
-                        service_args,
-                        backend_name,
-                        options,
-                        session_ids[partition_index],
-                    )
+                future = executor.submit(
+                    _estimate_expvals,
+                    tensor_ansatze_partition,
+                    tensor_pauli_list,
+                    superposition_ansatze_partition,
+                    superposition_pauli_list,
+                    service_args,
+                    backend_name,
+                    options,
+                    session_ids[partition_index],
                 )
+                partitioned_expval_futures[future] = partition_index
 
         tensor_expvals = []
         superposition_expvals = []
-        for i, partitioned_expval_future in enumerate(partitioned_expval_futures):
+        for future in as_completed(partitioned_expval_futures):
+            partition_index = partitioned_expval_futures[future]
             (
                 partition_tensor_expvals,
                 partition_superposition_expvals,
                 job_id,
-            ) = partitioned_expval_future.result()
+            ) = future.result()
             tensor_expvals.extend(partition_tensor_expvals)
             superposition_expvals.extend(partition_superposition_expvals)
             # Start a session for each thread if this is the first run
-            if job_id and (session_ids[i] is None):
+            if job_id and (session_ids[partition_index] is None):
                 if self._session_ids is None:
                     raise ValueError(
                         "Something unexpected happened. The session_ids field must be set when a job_id is present."
                     )
-                self._session_ids[i] = job_id
+                self._session_ids[partition_index] = job_id
 
         # Compute the Schmidt matrix
         h_schmidt = self._compute_h_schmidt(
