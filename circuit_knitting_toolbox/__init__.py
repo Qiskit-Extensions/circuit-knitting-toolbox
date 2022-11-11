@@ -10,8 +10,3 @@
 # that they have been altered from the originals.
 
 """Main Circuit Knitting Toolbox public functionality."""
-
-from qiskit_nature.settings import settings
-
-# This will suppress a warning about an upcoming change in Qiskit Nature
-settings.dict_aux_operators = True

@@ -8,18 +8,18 @@ We first require the following modules:
 
 .. jupyter-execute::
 
-   from qiskit_nature.drivers import Molecule
-   from qiskit_nature.drivers.second_quantization import PySCFDriver
-   from qiskit_nature.problems.second_quantization import ElectronicStructureProblem
+   from qiskit_nature.drivers.formats import MoleculeInfo
+   from qiskit_nature.second_q.drivers import PySCFDriver
 
 To set up the ``molecule`` object, we specify the individual atoms and their positions:
 
 .. jupyter-execute::
 
-   molecule = Molecule(
-       geometry=[
-           ("H", [0.0, 0.0, 0.0]),
-           ("H", [0.0, 0.0, 0.735]),
+   molecule = MoleculeInfo(
+       ["H", "H"],
+       [
+           (0.0, 0.0, 0.0),
+           (0.0, 0.0, 0.735),
        ],
        charge=0,
        multiplicity=1, # Multiplicity (2S+1) of the molecule, where S is the total spin angular momentum
@@ -37,4 +37,4 @@ Finally, we instantiate the ``ElectronicStructureProblem``, a class which wraps 
 
 .. jupyter-execute::
 
-   problem = ElectronicStructureProblem(driver)
+   problem = driver.run()

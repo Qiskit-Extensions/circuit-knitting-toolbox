@@ -16,12 +16,8 @@ import unittest
 import numpy as np
 from qiskit.circuit import Parameter, QuantumCircuit
 from qiskit.circuit.library import TwoLocal
-from qiskit_nature import settings
-from qiskit_nature.drivers import Molecule
-from qiskit_nature.drivers.second_quantization import PySCFDriver
-from qiskit_nature.problems.second_quantization import ElectronicStructureProblem
-
-settings.dict_aux_operators = True
+from qiskit_nature.second_q.formats import MoleculeInfo
+from qiskit_nature.second_q.drivers import PySCFDriver
 
 from circuit_knitting_toolbox.entanglement_forging import (
     EntanglementForgingAnsatz,
@@ -80,15 +76,19 @@ class TestEntanglementForgingKnitter(unittest.TestCase):
         """
 
         # Specify molecule
-        molecule = Molecule(
-            geometry=[("H", [0.0, 0.0, 0.0]), ("H", [0.0, 0.0, 0.735])],
+        molecule = MoleculeInfo(
+            ["H", "H"],
+            [
+                (0.0, 0.0, 0.0),
+                (0.0, 0.0, 0.735),
+            ],
             charge=0,
             multiplicity=1,
         )
 
         # Set up the ELectrionicStructureProblem
         driver = PySCFDriver.from_molecule(molecule)
-        problem = ElectronicStructureProblem(driver)
+        problem = driver.run()
 
         # Specify the ansatz and bitstrings
         ansatz = EntanglementForgingAnsatz(
@@ -126,17 +126,18 @@ class TestEntanglementForgingKnitter(unittest.TestCase):
         h2_x = radius_2 * np.cos(np.pi / 180 * thetas_in_deg)
         h2_y = radius_2 * np.sin(np.pi / 180 * thetas_in_deg)
 
-        molecule = Molecule(
-            geometry=[
-                ("O", [0.0, 0.0, 0.0]),
-                ("H", [h1_x, 0.0, 0.0]),
-                ("H", [h2_x, h2_y, 0.0]),
+        molecule = MoleculeInfo(
+            ["O", "H", "H"],
+            [
+                (0.0, 0.0, 0.0),
+                (h1_x, 0.0, 0.0),
+                (h2_x, h2_y, 0.0),
             ],
             charge=0,
             multiplicity=1,
         )
         driver = PySCFDriver.from_molecule(molecule, basis="sto6g")
-        problem = ElectronicStructureProblem(driver)
+        problem = driver.run()
 
         # solution
         orbitals_to_reduce = [0, 3]
@@ -220,7 +221,7 @@ class TestEntanglementForgingKnitter(unittest.TestCase):
             nuclear_repulsion_energy=0.7199689944489797,
         )
 
-        problem = ElectronicStructureProblem(driver)
+        problem = driver.run()
 
         ansatz = EntanglementForgingAnsatz(
             bitstrings_u=[(1, 0), (0, 1)],
@@ -251,7 +252,7 @@ class TestEntanglementForgingKnitter(unittest.TestCase):
             nuclear_repulsion_energy=self.energy_shift_o2,
         )
 
-        problem = ElectronicStructureProblem(driver)
+        problem = driver.run()
 
         ansatz = EntanglementForgingAnsatz(
             circuit_u=self.create_mock_ansatz_circuit(8),
@@ -293,7 +294,7 @@ class TestEntanglementForgingKnitter(unittest.TestCase):
             nuclear_repulsion_energy=self.energy_shift_ch3,
         )
 
-        problem = ElectronicStructureProblem(driver)
+        problem = driver.run()
 
         ansatz = EntanglementForgingAnsatz(
             circuit_u=self.create_mock_ansatz_circuit(6),
@@ -337,7 +338,7 @@ class TestEntanglementForgingKnitter(unittest.TestCase):
             nuclear_repulsion_energy=self.energy_shift_cn,
         )
 
-        problem = ElectronicStructureProblem(driver)
+        problem = driver.run()
 
         ansatz = EntanglementForgingAnsatz(
             circuit_u=self.create_mock_ansatz_circuit(8),

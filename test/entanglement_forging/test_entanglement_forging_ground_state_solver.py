@@ -15,9 +15,8 @@ import unittest
 import numpy as np
 from qiskit.algorithms.optimizers import SPSA
 from qiskit.circuit.library import TwoLocal
-from qiskit_nature.drivers import Molecule
-from qiskit_nature.drivers.second_quantization import PySCFDriver
-from qiskit_nature.problems.second_quantization import ElectronicStructureProblem
+from qiskit_nature.second_q.formats import MoleculeInfo
+from qiskit_nature.second_q.drivers import PySCFDriver
 
 from circuit_knitting_toolbox.entanglement_forging import (
     EntanglementForgingAnsatz,
@@ -34,15 +33,19 @@ class TestEntanglementForgingGroundStateSolver(unittest.TestCase):
         """Test of applying Entanglement Forged Solver to to compute the energy of a H2 molecule."""
 
         # Specify molecule
-        molecule = Molecule(
-            geometry=[("H", [0.0, 0.0, 0.0]), ("H", [0.0, 0.0, 0.735])],
+        molecule = MoleculeInfo(
+            ["H", "H"],
+            [
+                (0.0, 0.0, 0.0),
+                (0.0, 0.0, 0.735),
+            ],
             charge=0,
             multiplicity=1,
         )
 
         # Set up the ElectronicStructureProblem
         driver = PySCFDriver.from_molecule(molecule)
-        problem = ElectronicStructureProblem(driver)
+        problem = driver.run()
 
         # Specify the ansatz and bitstrings
         ansatz = EntanglementForgingAnsatz(

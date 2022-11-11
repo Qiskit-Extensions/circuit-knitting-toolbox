@@ -18,13 +18,10 @@ import numpy as np
 from nptyping import Float, Int, NDArray, Shape
 from qiskit.opflow import ListOp, PauliSumOp
 from qiskit.quantum_info import Pauli
-from qiskit_nature.converters.second_quantization import QubitConverter
-from qiskit_nature.drivers.second_quantization import ElectronicStructureDriver
-from qiskit_nature.mappers.second_quantization import JordanWignerMapper
-from qiskit_nature.problems.second_quantization import ElectronicStructureProblem
-from qiskit_nature.properties.second_quantization.electronic.bases import (
-    ElectronicBasis,
-)
+from qiskit_nature.second_q.drivers import ElectronicStructureDriver
+from qiskit_nature.second_q.mappers import JordanWignerMapper, QubitConverter
+from qiskit_nature.second_q.problems import ElectronicStructureProblem
+from qiskit_nature.second_q.problems import ElectronicBasis
 from qiskit_nature.properties.second_quantization.electronic.integrals import (
     IntegralProperty,
     OneBodyElectronicIntegrals,
@@ -56,11 +53,6 @@ def get_cholesky_op(
     Returns:
         - cholesky_operator: The converted operator
     """
-    # This will suppress a warning about an upcoming change in Qiskit Nature
-    from qiskit_nature.settings import settings
-
-    settings.dict_aux_operators = True
-
     cholesky_int = OneBodyElectronicIntegrals(
         basis=ElectronicBasis.SO, matrices=l_op[:, :, g]
     )
@@ -92,9 +84,6 @@ def cholesky_decomposition(
             - freeze_shift (float): An energy shift resulting from the decomposition. This shift should be re-applied after
               calculating properties of the decomposed operator (i.e. ground state energy).
     """
-    # Store the ElectronicStructureProblem
-    problem.second_q_ops()
-
     if problem.grouped_property_transformed is None:
         raise AttributeError(
             "There was a problem retrieving the grouped properties from the ElectronicStructureProblem."

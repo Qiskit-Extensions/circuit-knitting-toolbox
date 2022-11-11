@@ -36,9 +36,9 @@ from qiskit.opflow import PauliSumOp, OperatorBase
 from qiskit.quantum_info import Statevector
 from qiskit.result import Result
 from qiskit_nature import ListOrDictType
-from qiskit_nature.algorithms import GroundStateSolver
-from qiskit_nature.operators.second_quantization import SecondQuantizedOp
-from qiskit_nature.problems.second_quantization import (
+from qiskit_nature.second_q.algorithms import GroundStateSolver
+from qiskit_nature.second_q.operators import SparseLabelOp
+from qiskit_nature.second_q.problems import (
     BaseProblem,
     ElectronicStructureProblem,
 )
@@ -304,7 +304,7 @@ class EntanglementForgingGroundStateSolver(GroundStateSolver):
         self,
         problem: BaseProblem,
         aux_operators: Optional[
-            ListOrDictType[Union[SecondQuantizedOp, PauliSumOp]]
+            ListOrDictType[Union[SparseLabelOp, PauliSumOp]]
         ] = None,
     ) -> EigenstateResult:
         """Compute Ground State properties.
@@ -426,14 +426,14 @@ class EntanglementForgingGroundStateSolver(GroundStateSolver):
         self,
         problem: BaseProblem,
         aux_operators: Optional[
-            ListOrDictType[Union[SecondQuantizedOp, PauliSumOp]]
+            ListOrDictType[Union[SparseLabelOp, PauliSumOp]]
         ] = None,
     ) -> Tuple[PauliSumOp, Optional[ListOrDictType[PauliSumOp]]]:
         """Construct decomposed qubit operators from an ``ElectronicStructureProblem``.
 
         Args:
           - problem (BaseProblem): A class encoding a problem to be solved.
-          - aux_operators (ListOrDictType[Union[SecondQuantizedOp, PauliSumOp]]): Additional auxiliary operators to evaluate.
+          - aux_operators (ListOrDictType[Union[SparseLabelOp, PauliSumOp]]): Additional auxiliary operators to evaluate.
 
         Returns:
           - hamiltonian_ops: qubit operator representing the decomposed Hamiltonian.
@@ -457,13 +457,19 @@ class EntanglementForgingGroundStateSolver(GroundStateSolver):
         """
         return True
 
+    def supports_aux_operators(self) -> bool:
+        """Returns whether the eigensolver supports auxiliary operators."""
+        return False
+
     @property
     def qubit_converter(self):
         """Not implemented."""
+        raise NotImplementedError
 
     @property
     def solver(self):
         """Not implemented."""
+        raise NotImplementedError
 
     def evaluate_operators(
         self,
