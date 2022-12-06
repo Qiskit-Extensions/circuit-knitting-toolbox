@@ -11,7 +11,7 @@
 
 """File containing all cutting post processing functionality."""
 import itertools
-import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Sequence, Union, Tuple, List, Optional, Any
 
 
@@ -413,18 +413,27 @@ def build(
         list(subcircuit_entry_probs.keys()),
         key=lambda subcircuit_idx: len(subcircuit_entry_probs[subcircuit_idx][0]),
     )
-    args = []
-    for i in range(num_threads * 5):
-        segment_summation_terms = _find_process_jobs(
-            jobs=summation_terms, rank=i, num_workers=num_threads * 5
-        )
-        if len(segment_summation_terms) == 0:
-            break
-        arg = (smart_order, segment_summation_terms, subcircuit_entry_probs)
-        args.append(arg)
-    # Why "spawn"?  See https://pythonspeed.com/articles/python-multiprocessing/
-    with mp.get_context("spawn").Pool(num_threads) as pool:
-        results = pool.starmap(naive_compute, args)
+    result_futures = []
+    with ThreadPoolExecutor() as executor:
+        for i in range(num_threads):
+            segment_summation_terms = _find_process_jobs(
+                jobs=summation_terms, rank=i, num_workers=num_threads
+            )
+            if len(segment_summation_terms) == 0:
+                break
+            arg = (smart_order, segment_summation_terms, subcircuit_entry_probs)
+            result_futures.append(
+                executor.submit(
+                    naive_compute,
+                    smart_order,
+                    segment_summation_terms,
+                    subcircuit_entry_probs,
+                )
+            )
+        results = []
+        for i, future in enumerate(result_futures):
+            results.append(future.result())
+
     overhead = {"additions": 0, "multiplications": 0}
     reconstructed_prob = None
     for result in results:
