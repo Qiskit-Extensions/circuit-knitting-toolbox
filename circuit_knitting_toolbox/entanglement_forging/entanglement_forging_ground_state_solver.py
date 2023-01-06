@@ -189,6 +189,8 @@ class EntanglementForgingGroundStateSolver(GroundStateSolver):
         service: Optional[QiskitRuntimeService] = None,
         optimizer: Optional[Union[Optimizer, MINIMIZER]] = None,
         initial_point: Optional[NDArray] = None,
+        fix_first_bitstring: bool = False,
+        hf_energy: Optional[float] = None,
         orbitals_to_reduce: Optional[Sequence[int]] = None,
         backend_names: Optional[Union[str, List[str]]] = None,
         options: Optional[Union[Options, List[Options]]] = None,
@@ -201,6 +203,8 @@ class EntanglementForgingGroundStateSolver(GroundStateSolver):
             - service: The service used to spawn Qiskit primitives
             - optimizer: Optimizer to use to optimize the ansatz circuit parameters
             - initial_point: Initial values for ansatz parameters
+            - fix_first_bitstring: Flag for setting the HF bitstring values
+            - hf_energy: Value to assign to the HF bitstring circuit experiments
             - orbitals_to_reduce: List of orbital indices to remove from the problem before
                 decomposition.
             - backend_names: Backend name or list of backend names to use during parallel computation
@@ -218,6 +222,8 @@ class EntanglementForgingGroundStateSolver(GroundStateSolver):
         self._ansatz: Optional[EntanglementForgingAnsatz] = ansatz
         self._service: Optional[QiskitRuntimeService] = service
         self._initial_point: Optional[NDArray] = initial_point
+        self._fix_first_bitstring: bool = fix_first_bitstring
+        self._hf_energy: Optional[float] = hf_energy
         self._orbitals_to_reduce = orbitals_to_reduce
         self.backend_names = backend_names  # type: ignore
         self.options = options
@@ -275,6 +281,26 @@ class EntanglementForgingGroundStateSolver(GroundStateSolver):
         self._initial_point = initial_point
 
     @property
+    def fix_first_bitstring(self) -> bool:
+        """Return the value of fix_first_bitstring flag."""
+        return self._fix_first_bitstring
+
+    @fix_first_bitstring.setter
+    def fix_first_bitstring(self, fix_first_bitstring: bool) -> None:
+        """Set the fix_first_bitstring flag."""
+        self._fix_first_bitstring = fix_first_bitstring
+
+    @property
+    def hf_energy(self) -> Optional[float]:
+        """Return the value of the Hartree-Fock energy."""
+        return self._hf_energy
+
+    @hf_energy.setter
+    def hf_energy(self, hf_energy: Optional[float]) -> None:
+        """Set the Hartree-Fock energy field."""
+        self._hf_energy = hf_energy
+
+    @property
     def backend_names(self) -> Optional[List[str]]:
         """Return the backend names."""
         return self._backend_names
@@ -317,6 +343,10 @@ class EntanglementForgingGroundStateSolver(GroundStateSolver):
             - An interpreted :class:`~.EigenstateResult`. For more information see also
             :meth:`~.BaseProblem.interpret`.
         """
+        if self._fix_first_bitstring and self._hf_energy is None:
+            raise AttributeError(
+                "If the fix_first_bitstring flag is set, the hf_energy field must also be set."
+            )
         if not isinstance(problem, ElectronicStructureProblem):
             raise AttributeError(
                 "EntanglementForgingGroundStateSolver only accepts ElectronicStructureProblem as input to its solve method."
@@ -343,13 +373,18 @@ class EntanglementForgingGroundStateSolver(GroundStateSolver):
             backend_names = self._backend_names or ["ibmq_qasm_simulator"]
             self._knitter = EntanglementForgingKnitter(
                 self._ansatz,
+                fix_first_bitstring=self._fix_first_bitstring,
+                hf_energy=self._hf_energy,
                 service=self._service,
                 backend_names=backend_names,
                 options=self._options,
             )
         else:
             self._knitter = EntanglementForgingKnitter(
-                self._ansatz, options=self._options
+                self._ansatz,
+                fix_first_bitstring=self._fix_first_bitstring,
+                hf_energy=self._hf_energy,
+                options=self._options,
             )
         self._history = EntanglementForgingHistory()
         self._eval_count = 0

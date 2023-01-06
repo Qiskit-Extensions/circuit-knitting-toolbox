@@ -37,23 +37,11 @@ class EntanglementForgingKnitter:
     ansatz parameters and Schmidt coefficients.
     """
 
-    # Attributes:
-    #     - _ansatz (EntanglementForgingAnsatz): the ansatz containing the
-    #         information for the circuit structure and bitstrings to be used
-    #     - _backend_names (List[str]): the names of the backends to use
-    #     - _service (QiskitRuntimeService): the service used to access backends
-    #     - _tensor_circuits_u (List[QuantumCircuit]): the set of circuits used for the first
-    #         operator that have the same Schmidt values
-    #     - _superposition_circuits_u (List[QuantumCircuit]): the set of circuits used for
-    #         the first operator that have different Schmidt values
-    #     - _tensor_circuits_v (List[QuantumCircuit]): the set of circuits used for the second
-    #         operator that have the same Schmidt values
-    #     - _superposition_circuits_v (List[QuantumCircuit]): the set of circuits used for
-    #         the second operator that have different Schmidt values
-
     def __init__(
         self,
         ansatz: EntanglementForgingAnsatz,
+        fix_first_bitstring: bool = False,
+        hf_energy: Optional[float] = None,
         service: Optional[QiskitRuntimeService] = None,
         backend_names: Optional[Union[str, List[str]]] = None,
         options: Optional[Union[Options, List[Options]]] = None,
@@ -64,6 +52,8 @@ class EntanglementForgingKnitter:
         Args:
             - ansatz (EntanglementForgingAnsatz): The container for the circuit structure and bitstrings
                 to be used (and generate the stateprep circuits)
+            - fix_first_bitstring: Flag for setting the HF bitstring values
+            - hf_energy: Value to assign to the HF bitstring circuit experiments
             - service (QiskitRuntimeService): The service used to spawn Qiskit primitives and runtime jobs
             - backend_names (List[str]): Names of the backends to use for calculating expectation values
             - options (List[Options]): Options to use with the backends
@@ -89,6 +79,11 @@ class EntanglementForgingKnitter:
             bitstrings_v=ansatz.bitstrings_v or ansatz.bitstrings_u,
         )
 
+        # If the ansatz was designed to not modify the HF value, we can hard-code it by setting these fields.
+        # See documentation for more information.
+        self._fix_first_bitstring = fix_first_bitstring
+        self._hf_energy = hf_energy
+
         # self._tensor_circuits   = [|b1⟩,|b2⟩,...,|b2^N⟩]
         # self._superpos_circuits = [
         #           |𝜙^0_𝑏2𝑏1⟩,|𝜙^2_𝑏2𝑏1⟩,
@@ -100,7 +95,9 @@ class EntanglementForgingKnitter:
         (
             self._tensor_circuits_u,
             self._superposition_circuits_u,
-        ) = _construct_stateprep_circuits(self._ansatz.bitstrings_u)
+        ) = _construct_stateprep_circuits(
+            self._ansatz.bitstrings_u,
+        )
         if self._ansatz.bitstrings_are_symmetric:
             self._tensor_circuits_v, self._superposition_circuits_v = (
                 self._tensor_circuits_u,
@@ -111,7 +108,7 @@ class EntanglementForgingKnitter:
                 self._tensor_circuits_v,
                 self._superposition_circuits_v,
             ) = _construct_stateprep_circuits(
-                self._ansatz.bitstrings_v  # type: ignore
+                self._ansatz.bitstrings_v,  # type: ignore
             )
 
     @property
@@ -123,6 +120,53 @@ class EntanglementForgingKnitter:
             - (EntanglementForgingAnsatz): the ansatz member variable
         """
         return self._ansatz
+
+    @property
+    def fix_first_bitstring(self) -> bool:
+        """
+        Flag for determining whether to hard-code the HF energy at each iteration.
+
+        Returns:
+            - (bool): the value of the fix_first_bitstring flag
+        """
+        return self._fix_first_bitstring
+
+    @fix_first_bitstring.setter
+    def fix_first_bitstring(self, fix_first_bitstring: bool) -> None:
+        """
+        Set the fix_first_bitstring flag.
+
+        Args:
+            - fix_first_bitstring (bool): new value of flag
+
+        Returns:
+            - None
+        """
+        self._fix_first_bitstring = fix_first_bitstring
+
+    @property
+    def hf_energy(self) -> Optional[float]:
+        """
+        Value to assign to the Hartree-Fock bitstring at each iteration. This
+        is only used if the fix_first_bitstring flag is set.
+
+        Returns:
+            - (Optional[float]): the Hartree-Fock energy to assign at each iteration
+        """
+        return self._hf_energy
+
+    @hf_energy.setter
+    def hf_energy(self, hf_energy: Optional[float]) -> None:
+        """
+        Set the Hartree-Fock energy.
+
+        Args:
+            - hf_energy (Optional[float]): new value of HF energy
+
+        Returns:
+            - None
+        """
+        self._hf_energy = hf_energy
 
     @property
     def backend_names(self) -> Optional[List[str]]:
@@ -237,6 +281,11 @@ class EntanglementForgingKnitter:
                 containing the energy (i.e. forged expectation value), the Schmidt coefficients,
                 and the full Schmidt decomposition matrix
         """
+        if self._fix_first_bitstring and self._hf_energy is None:
+            raise AttributeError(
+                "If the fix_first_bitstring flag is set, the hf_energy field must also be set."
+            )
+
         if self._backend_names and self._options:
             if len(self._backend_names) != len(self._options):
                 if len(self._options) == 1:
@@ -296,9 +345,12 @@ class EntanglementForgingKnitter:
 
         partitioned_expval_futures = []
         with ThreadPoolExecutor() as executor:
-            for partition_index, (
-                tensor_ansatze_partition,
-                superposition_ansatze_partition,
+            for (
+                partition_index,
+                (
+                    tensor_ansatze_partition,
+                    superposition_ansatze_partition,
+                ),
             ) in enumerate(
                 zip(partitioned_tensor_ansatze, partitioned_superposition_ansatze)
             ):
@@ -319,6 +371,7 @@ class EntanglementForgingKnitter:
                         tensor_pauli_list,
                         superposition_ansatze_partition,
                         superposition_pauli_list,
+                        self._fix_first_bitstring,
                         service_args,
                         backend_name,
                         options,
@@ -344,10 +397,35 @@ class EntanglementForgingKnitter:
                     )
                 self._session_ids[i] = job_id
 
+        if self._fix_first_bitstring:
+            # Insert nans for U HF bitstring
+            if self._ansatz.bitstrings_are_symmetric:
+                nans = np.empty(np.shape(tensor_expvals[0]))
+                nans[:] = np.nan
+
+                tensor_expvals.insert(0, nans)
+            # Insert nans for U and V HF bitstrings
+            else:
+                num_tensor_terms = int(np.shape(tensor_expvals)[0] / 2)
+                nans_u = np.empty(np.shape(tensor_expvals[0]))
+                nans_u[:] = np.nan
+                nans_v = np.empty(np.shape(tensor_expvals[num_tensor_terms]))
+                nans_v[:] = np.nan
+
+                tensor_expvals.insert(num_tensor_terms, nans_v)
+                tensor_expvals.insert(0, nans_u)
+
         # Compute the Schmidt matrix
         h_schmidt = self._compute_h_schmidt(
-            forged_operator, np.array(tensor_expvals), np.array(superposition_expvals)
+            forged_operator,
+            np.array(tensor_expvals),
+            np.array(superposition_expvals),
         )
+
+        # Set the HF bitstring value to the pre-processed HF energy value
+        if self._fix_first_bitstring:
+            h_schmidt[0, 0] = self._hf_energy
+
         evals, evecs = np.linalg.eigh(h_schmidt)
         schmidt_coeffs = evecs[:, 0]
         energy = evals[0]
@@ -537,6 +615,7 @@ def _construct_stateprep_circuits(
 
     if subsystem_id is None:
         subsystem_id = "u"
+
     # If the spin-up and spin-down spin orbitals are together a 2*N qubit system,
     # the bitstring should be N bits long.
     bitstring_array = np.asarray(bitstrings)
@@ -640,6 +719,7 @@ def _estimate_expvals(
     tensor_paulis: List[Pauli],
     superposition_ansatze: List[QuantumCircuit],
     superposition_paulis: List[Pauli],
+    fix_first_bitstring: bool,
     service_args: Optional[Dict[str, Any]] = None,
     backend_name: Optional[str] = None,
     options: Optional[Options] = None,
@@ -663,6 +743,8 @@ def _estimate_expvals(
         - superposition_paulis (List[Pauli]): the pauli operators to measure and calculate
             the expectation values from for the circuits with different Schmidt
             coefficients
+        - fix_first_bitstring (bool): flag for determining whether to hard-code the values
+            associated with the Hartree-Fock bitstring
         - service_args (Dict[str, Any]): The service account used to spawn Qiskit primitives
         - backend_name (str): The backend to use to evaluate the grouped experiments
         - options (Options): The options to use with the backend
@@ -672,6 +754,8 @@ def _estimate_expvals(
         - (Tuple[List[NDArray], List[NDArray], Optional[str]]): the expectation values for the
             tensor circuits and superposition circuits
     """
+    if fix_first_bitstring:
+        tensor_ansatze = tensor_ansatze[1:]
     all_circuits = tensor_ansatze + superposition_ansatze
     all_observables = tensor_paulis + superposition_paulis
 
@@ -744,6 +828,9 @@ def _estimate_expvals(
     # Post-process the results to get our expectation values in the right format
     num_tensor_expvals = len(tensor_ansatze) * len(tensor_paulis)
     estimator_results_t = results[:num_tensor_expvals]
+    if fix_first_bitstring:
+        for i, _ in enumerate(tensor_paulis):
+            np.insert(estimator_results_t, 0, np.nan)
     estimator_results_s = results[num_tensor_expvals:]
 
     tensor_expval_list = list(
