@@ -17,18 +17,19 @@ from collections import defaultdict
 from collections.abc import Sequence, Hashable
 from typing import NamedTuple
 
+from qiskit import transpile
 from qiskit.utils import deprecate_func
 from qiskit.circuit import (
     QuantumCircuit,
     CircuitInstruction,
     Barrier,
 )
+from qiskit.circuit.library.standard_gates import XGate
 from qiskit.quantum_info import PauliList
 
 from ..utils.observable_grouping import observables_restricted_to_subsystem
-from ..utils.transforms import separate_circuit, _partition_labels_from_circuit
-from .qpd.qpd_basis import QPDBasis
-from .qpd.instructions import TwoQubitQPDGate
+from ..utils.transforms import separate_circuit
+from .qpd import QPDBasis, TwoQubitQPDGate
 
 
 class PartitionedCuttingProblem(NamedTuple):
@@ -282,3 +283,80 @@ def decompose_observables(
     }
 
     return subobservables_by_subsystem
+
+
+def find_gate_cuts(
+    circuit: QuantumCircuit, budget: float, transpilation_options: dict
+) -> tuple[QuantumCircuit, list[QPDBasis], list[int]]:
+    r"""
+    Find an optimized set of gates to cut, given a transpilation context.
+
+    This function seeks to reduce the depth of the transpiled
+    sub-experiments by cutting gates which result in the highest swap overhead.
+
+    Args:
+        circuit: The circuit to cut
+        budget: The max sampling overhead allowed in returned cutting problem
+        transpilation_options: A dictionary of kwargs to be passed to the Qiskit
+            ``transpile`` function.
+
+    Returns:
+        A tuple containing:
+            - A copy of the input circuit with SWAP-costly gates replaced with :class:`TwoQubitGate`\ s
+            - A list of :class:`QPDBasis` instances -- one for each QPD gate in the circuit
+            - A list of indices where the new :class:`TwoQubitGate`\ s are located in the output circuit
+    """
+    circ_copy = circuit.copy()
+
+    # Sweep the circuit num_cuts times. In each sweep, find the gate that results in the biggest
+    # reduction in depth, and replace it with a local, placeholder gate.
+    cut_indices = []
+    total_cost = 1
+    while total_cost < budget:
+        best_cuts = _evaluate_cuts(circ_copy, transpilation_options)
+        improved_best = False
+        for cut in best_cuts:
+            if cut[1] * total_cost > budget:
+                continue
+            best_idx = cut[0]
+            best_cost = cut[1]
+            best_score = cut[2]
+            improved_best = True
+            break
+        if not improved_best:
+            break
+        total_cost *= best_cost
+        cut_indices.append(best_idx)
+        print(f"Adding cut gate with cost {best_cost} and depth_savings {best_score * best_cost}")
+        # Put a single qubit placeholder in place of the optimal gate
+        qubit0 = circ_copy.find_bit(circ_copy.data[best_idx].qubits[0]).index
+        # Use XGate as a placeholder since it will transpile to all our backends.
+        # IGate cannot transpile to Eagle backends.
+        circ_copy.data[best_idx] = CircuitInstruction(XGate(), qubits=(qubit0,))
+
+    # Cut the deepest gates found in each step
+    qpd_circuit, bases = cut_gates(circuit, cut_indices)
+
+    return qpd_circuit, bases, cut_indices
+
+
+def _evaluate_cuts(
+    circuit: QuantumCircuit, transpilation_options: dict
+) -> list[tuple[int, int]]:
+    """Return the index and overhead for each supported gate in the circuit."""
+    input_depth = transpile(circuit, **transpilation_options).depth()
+
+    # For each supported gate in the circuit, assign a score based on the gate's
+    # average SWAP overhead across num_reps transpilation runs
+    cut_scores = []
+    for i, inst in enumerate(circuit.data):
+        if len(inst.qubits) != 2:
+            continue
+        del circuit.data[i]
+        depth_savings = input_depth - transpile(circuit, **transpilation_options).depth()
+        overhead = QPDBasis.from_instruction(inst.operation).overhead
+        cut_score = depth_savings / overhead
+        cut_scores.append((i, overhead, cut_score))
+        circuit.data.insert(i, inst)
+
+    return sorted(cut_scores, key=lambda x: x[2], reverse=True)

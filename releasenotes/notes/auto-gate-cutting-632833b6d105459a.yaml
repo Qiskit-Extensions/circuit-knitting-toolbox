@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Introduction of a new function, :func:`~circuit_knitting.cutting.find_gate_cuts`, which finds a set of gate cuts which will reduce the depth of the sub-experiments to run on the backend.
