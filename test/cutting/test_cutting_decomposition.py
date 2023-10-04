@@ -266,15 +266,6 @@ class TestCuttingDecomposition(unittest.TestCase):
             qc.cx(0, 1)
             qpd_qc, _ = cut_gates(qc, [0])
             self.assertEqual(qpd_qc, compare_qc)
-        with self.subTest("classical bit on input"):
-            qc = QuantumCircuit(2, 1)
-            qc.cx(0, 1)
-            with pytest.raises(ValueError) as e_info:
-                cut_gates(qc, [0])
-            assert (
-                e_info.value.args[0]
-                == "Circuits input to cut_gates should contain no classical registers or bits."
-            )
 
     def test_unused_qubits(self):
         """Issue #218"""

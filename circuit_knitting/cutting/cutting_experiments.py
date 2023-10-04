@@ -33,6 +33,44 @@ from .qpd import (
 from .cutting_decomposition import decompose_observables
 
 
+def generate_distribution_cutting_experiments(
+    circuit: QuantumCircuit,
+    num_samples: float,
+):
+    """Generate cutting experiments for reconstructing a probability distribution."""
+    # FIXME: make sure there's at least one measurement in the circuit
+
+    if not num_samples >= 1:
+        raise ValueError("num_samples must be at least 1.")
+
+    # Gather the unique bases from the circuit
+    bases, qpd_gate_ids = _get_bases(circuit)
+
+    # Sample the joint quasiprobability decomposition
+    random_samples = generate_qpd_weights(bases, num_samples=num_samples)
+
+    # Calculate terms in coefficient calculation
+    kappa = np.prod([basis.kappa for basis in bases])
+    num_samples = sum([value[0] for value in random_samples.values()])
+
+    # Sort samples in descending order of frequency
+    sorted_samples = sorted(random_samples.items(), key=lambda x: x[1][0], reverse=True)
+
+    # Generate the output experiments and their respective coefficients
+    subexperiments: list[QuantumCircuit] = []
+    coefficients: list[tuple[float, WeightType]] = []
+    for z, (map_ids, (redundancy, weight_type)) in enumerate(sorted_samples):
+        actual_coeff = np.prod(
+            [basis.coeffs[map_id] for basis, map_id in strict_zip(bases, map_ids)]
+        )
+        sampled_coeff = (redundancy / num_samples) * (kappa * np.sign(actual_coeff))
+        coefficients.append((sampled_coeff, weight_type))
+        decomp_qc = decompose_qpd_instructions(circuit, qpd_gate_ids, map_ids)
+        subexperiments.append(decomp_qc)
+
+    return subexperiments, coefficients
+
+
 def generate_cutting_experiments(
     circuits: QuantumCircuit | dict[Hashable, QuantumCircuit],
     observables: PauliList | dict[Hashable, PauliList],

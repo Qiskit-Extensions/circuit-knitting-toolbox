@@ -21,8 +21,30 @@ from qiskit.primitives import SamplerResult
 
 from ..utils.observable_grouping import CommutingObservableGroup, ObservableCollection
 from ..utils.bitwise import bit_count
+from ..utils.iteration import strict_zip
 from .cutting_decomposition import decompose_observables
 from .qpd import WeightType
+
+
+def reconstruct_distribution(
+    results: SamplerResult,
+    original_circuit_num_clbits: int,
+    coefficients: Sequence[tuple[float, WeightType]],
+):
+    """Reconstruct probability distribution."""
+    num_meas_bits = original_circuit_num_clbits
+    quasi_dists_out: dict[str | int, float] = {}
+    for quasi_dist, (coeff, _) in strict_zip(results.quasi_dists, coefficients):
+        for outcome, weight in quasi_dist.items():
+            # NOTE: The registers are in the opposite order compared to
+            # cutting_reconstruction._process_outcome.
+            meas_outcomes = outcome & ((1 << num_meas_bits) - 1)
+            qpd_outcomes = outcome >> num_meas_bits
+            qpd_factor = 1 - 2 * (bit_count(qpd_outcomes) & 1)
+            quasi_dists_out[meas_outcomes] = (
+                quasi_dists_out.get(meas_outcomes, 0.0) + coeff * qpd_factor * weight
+            )
+    return quasi_dists_out
 
 
 def reconstruct_expectation_values(

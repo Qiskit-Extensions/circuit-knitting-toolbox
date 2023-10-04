@@ -141,10 +141,6 @@ def cut_gates(
     Raises:
         ValueError: The input circuit should contain no classical bits or registers.
     """
-    if len(circuit.cregs) != 0 or circuit.num_clbits != 0:
-        raise ValueError(
-            "Circuits input to cut_gates should contain no classical registers or bits."
-        )
     # Replace specified gates with TwoQubitQPDGates
     if not inplace:
         circuit = circuit.copy()
