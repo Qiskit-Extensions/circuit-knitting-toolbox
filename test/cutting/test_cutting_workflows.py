@@ -20,13 +20,7 @@ from qiskit.circuit.library import EfficientSU2, CXGate
 from qiskit.quantum_info import PauliList
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit.providers.fake_provider import GenericBackendV2
-
-try:
-    from qiskit.primitives import BackendSamplerV2
-except ImportError:
-    backendsamplerv2_available = False
-else:
-    backendsamplerv2_available = True
+from qiskit_ibm_runtime import SamplerV2
 from qiskit_aer.primitives import Sampler
 from qiskit_aer import AerSimulator
 
@@ -190,10 +184,6 @@ def test_wire_cut_workflow_with_reused_qubits():
         assert "reset" not in subexpt.count_ops()
 
 
-@pytest.mark.skipif(
-    not backendsamplerv2_available,
-    reason="BackendSamplerV2 is not available in Qiskit < 1.1",
-)
 def test_reconstruction_with_samplerv2():
     """Smoke test for reconstruction using samplerv2"""
     qc = QuantumCircuit(4)
@@ -213,11 +203,9 @@ def test_reconstruction_with_samplerv2():
         num_samples=100,
     )
 
-    # Use BackendSamplerV2 with AerSimulator, following
-    # https://github.com/Qiskit/qiskit-aer/issues/2078#issuecomment-1971498534
+    # Use SamplerV2 in local mode with AerSimulator
     samplers = {
-        label: BackendSamplerV2(backend=AerSimulator())
-        for label in subexperiments.keys()
+        label: SamplerV2(backend=AerSimulator()) for label in subexperiments.keys()
     }
     results = {
         label: sampler.run(subexperiments[label], shots=128).result()
