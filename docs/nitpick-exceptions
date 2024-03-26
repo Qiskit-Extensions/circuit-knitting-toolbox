@@ -1,0 +1,16 @@
+# python
+py:class collections.abc.Sequence
+py.class collections.abc.Hashable
+
+# numpy
+py:class numpy.ndarray
+
+# qiskit
+py:class qiskit.circuit.quantumcircuit.QuantumCircuit
+py:class qiskit.quantum_info.operators.symplectic.pauli.Pauli
+py:class qiskit.opflow.list_ops.list_op.ListOp
+
+# qiskit-nature
+py:class qiskit_nature.second_q.problems.ElectronicStructureProblem
+
+# qiskit-ibm-runtime
