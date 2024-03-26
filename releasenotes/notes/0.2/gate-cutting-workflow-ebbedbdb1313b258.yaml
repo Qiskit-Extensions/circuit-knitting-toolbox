@@ -5,7 +5,7 @@ prelude: |
     :ref:`explanation guide <circuit cutting explanation>`.
 
     The foundation of the :mod:`~circuit_knitting_toolbox.circuit_cutting` package is the :mod:`circuit_knitting_toolbox.circuit_cutting.qpd`
-    sub-package. The :mod:`~circuit_knitting_toolbox.circuit_cutting.qpd` package allows for easy transformation of :class:`~qiskit.QuantumCircuit` gates and wires into elements which may be decomposed to a probabilistic set of basis gates.
+    sub-package. The :mod:`~circuit_knitting_toolbox.circuit_cutting.qpd` package allows for easy transformation of :class:`~qiskit.circuit.QuantumCircuit` gates and wires into elements which may be decomposed to a probabilistic set of basis gates.
     See :class:`~circuit_knitting_toolbox.circuit_cutting.qpd.QPDBasis` and :class:`~circuit_knitting_toolbox.circuit_cutting.qpd.BaseQPDGate` classes for more information.
 
     Additionally, 0.2.0 includes a set of functions which allow for easy implementation of gate cutting workflows.
@@ -19,7 +19,7 @@ prelude: |
 features:
   - |
     Addition of a :mod:`~circuit_knitting_toolbox.circuit_cutting.qpd` package which allows for easy
-    transformation of :class:`~qiskit.QuantumCircuit` gates and wires into elements which may be decomposed to a
+    transformation of :class:`~qiskit.circuit.QuantumCircuit` gates and wires into elements which may be decomposed to a
     probabilistic set of basis gates. See :class:`~circuit_knitting_toolbox.circuit_cutting.qpd.QPDBasis` and :class:`~circuit_knitting_toolbox.circuit_cutting.qpd.BaseQPDGate` classes for more information.
   - |
     Addition of :mod:`~circuit_knitting_toolbox.circuit_cutting.cutting_decomposition`, :mod:`~circuit_knitting_toolbox.circuit_cutting.cutting_execution`,

@@ -10,11 +10,11 @@ Circuit cutting is a technique to increase the size of circuits we can run on qu
 
 Key terms
 -----------------
-* subcircuits: The set of circuits resulting from cutting gates in a :class:`QuantumCircuit` and then separating the disconnected qubit subsets into smaller circuits. These circuits contain :class:`SingleQubitQPDGate`\ s and will be used to instantiate each unique subexperiment.
+* subcircuits: The set of circuits resulting from cutting gates in a :class:`~qiskit.circuit.QuantumCircuit` and then separating the disconnected qubit subsets into smaller circuits. These circuits contain :class:`.SingleQubitQPDGate`\ s and will be used to instantiate each unique subexperiment.
 
-* subexperiments: A term used to describe the unique circuit samples associated with a subcircuit. These circuits have had their :class:`BaseQPDGate`\ s decomposed into local Qiskit gates and measurements. Subexperiments are the circuits sent to the backend for execution.
+* subexperiments: A term used to describe the unique circuit samples associated with a subcircuit. These circuits have had their :class:`.BaseQPDGate`\ s decomposed into local Qiskit gates and measurements. Subexperiments are the circuits sent to the backend for execution.
 
-* decompose: We try to honor the Qiskit notion of "decompose" in the documentation and API, which loosely means transforming a gate into a less-abstracted representation. *Occasionally*, we may use the term "decompose" to refer to the act of inserting :class:`BaseQPDGate` instances into quantum circuits as "decomposing" a gate or wire; however, we try to use terms like "partition" and "cut" when referring to this to avoid ambiguity with Qiskit language.
+* decompose: We try to honor the Qiskit notion of "decompose" in the documentation and API, which loosely means transforming a gate into a less-abstracted representation. *Occasionally*, we may use the term "decompose" to refer to the act of inserting :class:`.BaseQPDGate` instances into quantum circuits as "decomposing" a gate or wire; however, we try to use terms like "partition" and "cut" when referring to this to avoid ambiguity with Qiskit language.
 
 Circuit cutting as a quasiprobability decomposition (QPD)
 ---------------------------------------------------------
@@ -24,7 +24,7 @@ To perform circuit cutting, one must partition (“cut”) the graph representin
 
 There are two types of cuts: gate cuts and wire cuts.  Gate cuts, also known as "space-like" cuts, exist when the cut goes through a gate operating on two (or more) qubits.  Wire cuts, also known as "time-like" cuts, are direct cuts through a qubit wire, essentially a single-qubit identity gate that has been cut into two pieces.  A wire cut is simulated by introducing a new qubit into the circuit and moving remaining operations after the cut identity gate to the new qubit.
 
-There are three settings to consider for circuit cutting.  The first is where only local operations (LO) [i.e., local *quantum* operations] are available.  The other settings introduce classical communication between the circuit executions, which is known in the quantum information literature as LOCC, for `local operations and classical communication <https://en.wikipedia.org/wiki/LOCC>`__.  The LOCC can be either near-time, one-directional communication between the circuit executions (the second setting), or real-time, bi-directional communication (the third setting).
+There are `three settings <https://research.ibm.com/blog/circuit-knitting-with-classical-communication>`__ to consider for circuit cutting.  The first is where only local operations (LO) [i.e., local *quantum* operations] are available.  The other settings introduce classical communication between the circuit executions, which is known in the quantum information literature as LOCC, for `local operations and classical communication <https://en.wikipedia.org/wiki/LOCC>`__.  The LOCC can be either near-time, one-directional communication between the circuit executions (the second setting), or real-time, bi-directional communication (the third setting).
 
 As mentioned above, the cost of any simulation based on quasiprobability distribution is an exponential sampling overhead. The overhead of a cut gate depends on which gate is cut; see the final appendix of [`1 <https://arxiv.org/abs/2205.00016>`__] for details.  Here, we will focus on the CNOT gate.  If no real-time classical communication is available between qubits of the cut gate or wire, cut CNOT gates incur a sampling overhead of O(:math:`9^n`), and wire cuts incur a sampling overhead of O(:math:`16^n`), where :math:`n` is the total number of cuts. If real-time communication is available (i.e., if the hardware supports “dynamic circuits”), the sampling overhead for both CNOT gate and wire cuts may be reduced to O(:math:`4^n`) [`1 <https://arxiv.org/abs/2205.00016>`__,\ `4 <https://arxiv.org/abs/2302.03366>`__]; however, support for circuit cutting with classical communication (LOCC) is not yet supported in CKT.
 
@@ -32,13 +32,58 @@ For more detailed information on the quasiprobability decomposition technique, r
 
 Sampling overhead
 -----------------
-The sampling overhead is the factor by which the number of samples must increase for the quasiprobability decomposition to result in the same amount of error, $\epsilon$, as one would get by sampling the original circuit. Cutting CNOT and CZ gates incurs a sampling overhead of roughly $O(9^k/\epsilon^2)$, where $k$ is the number of cuts [`2 <https://arxiv.org/abs/1909.07534>`__]; however, other gates may have higher or lower exponential bases. For example, the sampling overhead resulting from cutting SWAP gates scales with complexity $O(49^k/\epsilon^2)$ [`3 <https://arxiv.org/abs/2006.11174>`__]. Cutting wires with local operations (LO) only incurs a sampling overhead of $4^{2k}$ [`4 <https://arxiv.org/abs/2302.03366>`__].
+The sampling overhead is the factor by which the number of samples must increase for the quasiprobability decomposition to result in the same amount of error, :math:`\epsilon`, as one would get by sampling the original circuit. Cutting CNOT and CZ gates incurs a sampling overhead of roughly :math:`O(9^k/\epsilon^2)`, where :math:`k` is the number of cuts [`2 <https://arxiv.org/abs/1909.07534>`__]; however, other gates may have higher or lower exponential bases. For example, the sampling overhead resulting from cutting SWAP gates scales with complexity :math:`O(49^k/\epsilon^2)` [`3 <https://arxiv.org/abs/2006.11174>`__]. Cutting wires with local operations (LO) only incurs a sampling overhead of :math:`4^{2k}` [`4 <https://arxiv.org/abs/2302.03366>`__].
 
 Sample weights in CKT
 ---------------------
 In CKT, the number of samples taken from the distribution is generally controlled by a `num_samples` argument, and each sample has an associated weight which is used during expectation value reconstruction. Each weight with absolute value above a threshold of 1 / `num_samples` will be evaluated exactly.  The remaining low-probability elements -- those in the tail of the distribution -- will then be sampled, resulting in at most `num_samples` unique weights. Setting `num_samples` to infinity indicates that all weights should be generated rigorously, rather than by sampling from the distribution.
 
 Much of the circuit cutting literature describes a process where we sample from the distribution, take a single shot, then sample from the distribution again and repeat; however, this is not feasible in practice. The total number of shots needed grows exponentially with the number of cuts, and taking single shot experiments via Qiskit Runtime quickly becomes untenable. Instead, we take an equivalent number of shots for each considered subexperiment and send them to the backend(s) in batches. During reconstruction, each subexperiment contributes to the final result with proportion equal to its weight.  We just need to ensure the number of shots we take is appropriate for the heaviest weights, and thus, appropriate for all weights.
+
+Sampling overhead reference table
+---------------------------------
+
++------------------------------------------------+-----------------------------------+-------------------------------------------------------------------------+
+| Instruction(s)                                 | KAK decomposition angles          | Sampling overhead factor                                                |
++================================================+===================================+=========================================================================+
+| :class:`~qiskit.circuit.library.CSGate`,       | :math:`(\pi/8, 0, 0)`             | :math:`3+2\sqrt{2} \approx 5.828`                                       |
+| :class:`~qiskit.circuit.library.CSdgGate`,     |                                   |                                                                         |
+| :class:`~qiskit.circuit.library.CSXGate`       |                                   |                                                                         |
++------------------------------------------------+-----------------------------------+-------------------------------------------------------------------------+
+| :class:`~qiskit.circuit.library.CXGate`,       | :math:`(\pi/4, 0, 0)`             | :math:`3^2=9`                                                           |
+| :class:`~qiskit.circuit.library.CYGate`,       |                                   |                                                                         |
+| :class:`~qiskit.circuit.library.CZGate`,       |                                   |                                                                         |
+| :class:`~qiskit.circuit.library.CHGate`,       |                                   |                                                                         |
+| :class:`~qiskit.circuit.library.ECRGate`       |                                   |                                                                         |
++------------------------------------------------+-----------------------------------+-------------------------------------------------------------------------+
+| :class:`~qiskit.circuit.library.iSwapGate`,    | :math:`(\pi/4, \pi/4, 0)`         | :math:`7^2=49`                                                          |
+| :class:`~qiskit.circuit.library.DCXGate`       |                                   |                                                                         |
++------------------------------------------------+-----------------------------------+                                                                         +
+| :class:`~qiskit.circuit.library.SwapGate`      | :math:`(\pi/4,\pi/4,\pi/4)`       |                                                                         |
++------------------------------------------------+-----------------------------------+-------------------------------------------------------------------------+
+| :class:`~qiskit.circuit.library.RXXGate`,      | :math:`(|\theta/2|, 0, 0)`        | :math:`\left[1 + 2 \left|\sin(\theta)\right| \right]^2`                 |
+| :class:`~qiskit.circuit.library.RYYGate`,      |                                   |                                                                         |
+| :class:`~qiskit.circuit.library.RZZGate`,      |                                   |                                                                         |
+| :class:`~qiskit.circuit.library.RZXGate`       |                                   |                                                                         |
++------------------------------------------------+-----------------------------------+-------------------------------------------------------------------------+
+| :class:`~qiskit.circuit.library.CRXGate`,      | :math:`(|\theta/4|, 0, 0)`        | :math:`\left[1 + 2 \left|\sin(\theta/2)\right| \right]^2`               |
+| :class:`~qiskit.circuit.library.CRYGate`,      |                                   |                                                                         |
+| :class:`~qiskit.circuit.library.CRZGate`,      |                                   |                                                                         |
+| :class:`~qiskit.circuit.library.CPhaseGate`    |                                   |                                                                         |
++------------------------------------------------+-----------------------------------+-------------------------------------------------------------------------+
+| :class:`~qiskit.circuit.library.XXPlusYYGate`, | :math:`(|\theta/4|,|\theta/4|,0)` | :math:`\left[1+4\left|\sin(\theta/2)\right|+2\sin^2(\theta/2)\right]^2` |
+| :class:`~qiskit.circuit.library.XXMinusYYGate` |                                   |                                                                         |
++------------------------------------------------+-----------------------------------+-------------------------------------------------------------------------+
+| :class:`.Move` (cut wire)                      | not applicable                    | :math:`4^2=16`                                                          |
++------------------------------------------------+-----------------------------------+-------------------------------------------------------------------------+
+
+For more information on the KAK decomposition, see:
+
+- https://arxiv.org/abs/2006.11174
+- https://arxiv.org/abs/2205.00016
+- https://arxiv.org/abs/quant-ph/0312193
+- https://arxiv.org/abs/quant-ph/0011050
+- https://arxiv.org/abs/quant-ph/0507171
 
 Current limitations
 -------------------
