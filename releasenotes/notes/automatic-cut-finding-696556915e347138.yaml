@@ -1,0 +1,18 @@
+---
+features:
+  - |
+    Added a cut-finder function, :func:`circuit_knitting.cutting.find_cuts`, for automatically
+    identifying locations to place LO gate and wire cuts such that the circuit is
+    separable and runnable, given the maximum number of qubits per subcircuit. 
+    The cut-finder will search for cut schemes which minimize the sampling overhead. 
+    Note, however, that for larger circuits, the number of cuts needed to separate the
+    circuit will naturally grow larger, leading to an exponentially increasing sampling overhead.
+    For instances of wire cuts, the cut-finder assumes no qubit reuse. Therefore, for each wire 
+    cut, a new wire is added to the circuit. In addition, the cut-finder requires that every gate
+    in an input circuit be at most a two qubit gate. The search algorithm used by the cut-finder
+    to identify cut locations is Dijkstra's best first search algorithm which is guaranteed to find
+    solutions with the lowest sampling overhead, provided any user-specified value for the maximum number
+    of allowed backjumps or for the maximum sampling overhead does not prematurely stop the search. If 
+    the user wishes to time-restrict the search when running the cut-finder on large circuits, they can 
+    specify a maximum sampling overhead and/or a maximum number of allowed backjumps, in which case the
+    cut-finder will return a valid albeit suboptimal cut scheme.
