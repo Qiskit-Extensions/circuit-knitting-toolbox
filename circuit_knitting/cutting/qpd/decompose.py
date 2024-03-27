@@ -23,6 +23,7 @@ from qiskit.circuit import (
 )
 
 from .instructions import BaseQPDGate, TwoQubitQPDGate
+from ...utils.equivalence import equivalence_libraries
 
 
 def decompose_qpd_instructions(
@@ -30,6 +31,7 @@ def decompose_qpd_instructions(
     instruction_ids: Sequence[Sequence[int]],
     map_ids: Sequence[int] | None = None,
     *,
+    translate_to_qpu: str | None = None,
     inplace: bool = False,
 ) -> QuantumCircuit:
     r"""
@@ -43,6 +45,9 @@ def decompose_qpd_instructions(
         map_ids: Indices to a specific linear mapping to be applied to the decompositions
             in the circuit. If no map IDs are provided, the circuit will be decomposed randomly
             according to the decompositions' joint probability distribution.
+        translate_to_qpu: A QPU architecture for which the sampled instructions should be
+            translated. Supported inputs are: {"heron", "eagle", None}
+        inplace: Whether to modify the input circuit directly
 
     Returns:
         Circuit which has had all its :class:`BaseQPDGate` instances decomposed into local operations.
@@ -76,7 +81,9 @@ def decompose_qpd_instructions(
                 circuit.data[gate_id].operation.basis_id = map_ids[i]
 
     # Convert all instances of BaseQPDGate in the circuit to Qiskit instructions
-    _decompose_qpd_instructions(circuit, instruction_ids)
+    _decompose_qpd_instructions(
+        circuit, instruction_ids, translate_to_qpu=translate_to_qpu
+    )
 
     return circuit
 
@@ -170,6 +177,7 @@ def _decompose_qpd_instructions(
     circuit: QuantumCircuit,
     instruction_ids: Sequence[Sequence[int]],
     inplace: bool = True,
+    translate_to_qpu: str | None = None,
 ) -> QuantumCircuit:
     """Decompose all BaseQPDGate instances, ignoring QPDMeasure()."""
     if not inplace:
@@ -198,6 +206,13 @@ def _decompose_qpd_instructions(
         data_id_offset += 1
         circuit.data.insert(i + data_id_offset, inst2)
 
+    # Get equivalence library
+    if translate_to_qpu is not None:
+        translate_to_qpu = translate_to_qpu.lower()
+    else:
+        translate_to_qpu = "standard"
+    equivalence = equivalence_libraries[translate_to_qpu]
+
     # Decompose all the QPDGates (should all be single qubit now) into Qiskit operations
     new_instruction_ids = []
     for i, inst in enumerate(circuit.data):
@@ -214,7 +229,23 @@ def _decompose_qpd_instructions(
         for data in inst.operation.definition.data:
             # Can ignore clbits here, as QPDGates don't use clbits directly
             assert data.clbits == ()
-            tmp_data.append(CircuitInstruction(data.operation, qubits=[qubits[0]]))
+            if equivalence is None:
+                tmp_data.append(CircuitInstruction(data.operation, qubits=[qubits[0]]))
+            else:
+                equiv_entry = equivalence.get_entry(data.operation)
+                # CKT SELs currently only provide at most one translation
+                assert len(equiv_entry) <= 1
+                if equiv_entry == []:
+                    tmp_data.append(
+                        CircuitInstruction(data.operation, qubits=[qubits[0]])
+                    )
+                else:
+                    new_insts = equiv_entry[0]
+                    for d in new_insts.data:
+                        tmp_data.append(
+                            CircuitInstruction(d.operation, qubits=[qubits[0]])
+                        )
+
         # Replace QPDGate with local operations
         if tmp_data:
             # Overwrite the QPDGate with first instruction
