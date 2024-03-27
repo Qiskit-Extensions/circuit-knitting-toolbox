@@ -209,6 +209,8 @@ def _decompose_qpd_instructions(
     # Get equivalence library
     if translate_to_qpu is not None:
         translate_to_qpu = translate_to_qpu.lower()
+    else:
+        translate_to_qpu = "standard"
     equivalence = equivalence_libraries[translate_to_qpu]
 
     # Decompose all the QPDGates (should all be single qubit now) into Qiskit operations
