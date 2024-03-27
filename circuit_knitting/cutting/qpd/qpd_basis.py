@@ -119,7 +119,7 @@ class QPDBasis:
         Generate a :class:`.QPDBasis` object, given a supported operation.
 
         This static method is provided for convenience; it simply
-        calls :func:`~qpd.qpd.qpdbasis_from_instruction` under the hood.
+        calls :func:`~qpd.decompositions.qpdbasis_from_instruction` under the hood.
 
         Args:
             gate: The instruction from which to instantiate a decomposition
@@ -128,7 +128,7 @@ class QPDBasis:
             The newly-instantiated :class:`QPDBasis` object
         """
         # pylint: disable=cyclic-import
-        from .qpd import qpdbasis_from_instruction
+        from .decompositions import qpdbasis_from_instruction
 
         return qpdbasis_from_instruction(gate)
 

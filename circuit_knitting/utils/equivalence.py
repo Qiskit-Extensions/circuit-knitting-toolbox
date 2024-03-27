@@ -18,6 +18,7 @@ Equivalence utilities.
    :toctree: ../stubs/
 
 """
+from collections import defaultdict
 
 import numpy as np
 from qiskit.circuit import (
@@ -45,6 +46,9 @@ from qiskit.circuit.library.standard_gates import (
 )
 
 _eagle_sel = HeronEquivalenceLibrary = EagleEquivalenceLibrary = EquivalenceLibrary()
+equivalence_libraries = defaultdict(
+    lambda: None, {"heron": EagleEquivalenceLibrary, "eagle": EagleEquivalenceLibrary}
+)
 
 ########## Single-qubit Eagle native gate set: x, sx, rz, i ##########
 # XGate

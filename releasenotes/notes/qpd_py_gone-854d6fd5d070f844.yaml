@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    The code in the ``circuit_knitting.cutting.qpd.qpd`` submodule has
+    been split into three separate files.  If you were importing
+    directly from this submodule, you will now need to import from
+    :mod:`circuit_knitting.cutting.qpd` instead.

@@ -5,7 +5,7 @@
   [![Release](https://img.shields.io/pypi/v/circuit-knitting-toolbox.svg?label=Release)](https://github.com/Qiskit-Extensions/circuit-knitting-toolbox/releases)
   ![Platform](https://img.shields.io/badge/%F0%9F%92%BB%20Platform-Linux%20%7C%20macOS%20%7C%20Windows-informational)
   [![Python](https://img.shields.io/pypi/pyversions/circuit-knitting-toolbox?label=Python&logo=python)](https://www.python.org/)
-  [![Qiskit](https://img.shields.io/badge/Qiskit%20-%20%3E%3D0.46%20-%20%236133BD?logo=Qiskit)](https://github.com/Qiskit/qiskit)
+  [![Qiskit](https://img.shields.io/badge/Qiskit%20-%20%3E%3D1.0%20-%20%236133BD?logo=Qiskit)](https://github.com/Qiskit/qiskit)
 <br />
   [![Docs (stable)](https://img.shields.io/badge/%F0%9F%93%84%20Docs-stable-blue.svg)](https://qiskit-extensions.github.io/circuit-knitting-toolbox/)
   [![DOI](https://zenodo.org/badge/543181258.svg)](https://zenodo.org/badge/latestdoi/543181258)

@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Circuit cutting reconstruction can now interpret the
+    :class:`~qiskit.primitives.PrimitiveResult` object, which is
+    returned by version 2 of the sampler primitive
+    (:class:`~qiskit.primitives.BaseSamplerV2`).  See the `migration guide
+    <https://docs.quantum.ibm.com/api/migration-guides/qiskit-1.0-features#qiskitprimitives>`__
+    for details on upgrading to version 2 of the Qiskit primitives.

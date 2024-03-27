@@ -20,7 +20,7 @@ jobs:
       max-parallel: 4
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.11"]
+        python-version: ["3.8", "3.12"]
         include:
           - os: macos-latest
             python-version: "3.8"
@@ -47,4 +47,8 @@ jobs:
           pver=${{ matrix.python-version }}
           tox -epy${pver/./} -- --run-slow
           notebook_flags=""
+          if [ "$pver" = "3.12" ]; then
+            echo Skipping tutorials that require cplex
+            notebook_flags="${notebook_flags} --ignore=docs/circuit_cutting/cutqc/tutorials/tutorial_1_automatic_cut_finding.ipynb"
+          fi
           tox -epy${pver/./}-notebook -- ${notebook_flags}

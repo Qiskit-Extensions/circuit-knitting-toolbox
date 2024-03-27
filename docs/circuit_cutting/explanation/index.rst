@@ -42,7 +42,7 @@ Much of the circuit cutting literature describes a process where we sample from 
 
 Current limitations
 -------------------
-* ``PauliList`` is the only supported observable format until no sooner than CKT v0.6.0.
+* ``PauliList`` is the only supported observable format until no sooner than CKT v0.7.0.
 
 References
 ----------

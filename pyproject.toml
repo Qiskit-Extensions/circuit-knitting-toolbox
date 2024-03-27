@@ -20,6 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Physics",
 ]
 
@@ -29,17 +30,17 @@ dependencies = [
     "numpy>=1.23.0",
     "scipy>=1.5.2",
     "rustworkx>=0.14.0",
-    "qiskit-aer>=0.12.0",
-    "qiskit>=0.46.0, <2.0",
-    "qiskit-ibm-runtime>=0.12.2",
+    "qiskit-aer>=0.13.3",
+    "qiskit>=1.0.0, <2.0",
+    "qiskit-ibm-runtime>=0.21.0",
 ]
 
 [project.optional-dependencies]
 cplex = [
     # We use the same restrictions in both of the following lines, as there
     # is no reason for us to install docplex without cplex.
-    "docplex>=2.23.222; platform_machine != 'arm64'",
-    "cplex>=22.1.0.0; platform_machine != 'arm64'",
+    "docplex>=2.23.222; python_version < '3.12' and platform_machine != 'arm64'",
+    "cplex>=22.1.0.0; python_version < '3.12' and platform_machine != 'arm64'",
 ]
 dev = [
     "circuit-knitting-toolbox[test,nbtest,lint]",
@@ -54,10 +55,10 @@ test = [
 ]
 nbtest = [
     "circuit-knitting-toolbox[basetest]",
-    "nbmake>=1.3.4"
+    "nbmake>=1.4.3"
 ]
 style = [
-    "autoflake==2.2.1",
+    "autoflake==2.3.0",
     "black[jupyter]~=24.1",
     "ruff>=0.0.246",
     "nbqa>=1.6.0",
@@ -67,7 +68,7 @@ lint = [
     "pydocstyle==6.3.0",
     "mypy==1.8.0",
     "reno>=3.4.0",
-    "pylint==3.0.3",
+    "pylint==3.1.0",
     # pydocstyle prefers to parse our pyproject.toml, hence the following line
     "toml",
 ]

@@ -1,0 +1,4 @@
+---
+features:
+  - |
+      The functions, :func:`.generate_qpd_experiments` and :func:`decompose_qpd_instructions`, now accept an optional argument, ``translate_to_qpu``, which accepts a string denoting whether the instructions sampled for cutting should be translated to a particular QPU architecture. Accepted inputs are: ``{"heron", "eagle"}``.
