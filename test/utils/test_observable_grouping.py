@@ -77,6 +77,11 @@ class TestEstimatorUtilities(unittest.TestCase):
             PauliList(["XX", "YY", "ZZ"]),
             PauliList.from_symplectic(np.zeros((3, 0)), np.zeros((3, 0))),
         ),
+        (
+            (2, 1),
+            [Pauli("XYZ"), Pauli("iZYX"), Pauli("-ZXZ")],
+            [Pauli("YX"), Pauli("YZ"), Pauli("XZ")],
+        ),
     )
     @unpack
     def test_observables_restricted_to_subsystem(self, qubits, observables, expected):

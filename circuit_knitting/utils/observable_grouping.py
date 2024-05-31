@@ -45,6 +45,8 @@ def observables_restricted_to_subsystem(
     A :class:`~qiskit.quantum_info.PauliList` will be returned if a :class:`~qiskit.quantum_info.PauliList` is provided; otherwise,
     a ``list[Pauli]`` will be returned.
 
+    Any phase information will be discarded, consistent with the standard behavior when slicing a Pauli.
+
     Args:
         qubits: The qubits in a subsystem
         global_observables: The list of observables
@@ -52,7 +54,7 @@ def observables_restricted_to_subsystem(
     Returns:
         Each :class:`~qiskit.quantum_info.Pauli` restricted to the subsystem.
 
-    >>> observables_restricted_to_subsystem([1, 3], PauliList(["IXYZ", "ZZXX"]))
+    >>> observables_restricted_to_subsystem([1, 3], PauliList(["IXYZ", "iZZXX"]))
     PauliList(['IY', 'ZX'])
 
     """
