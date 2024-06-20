@@ -59,7 +59,7 @@ def test_transpile_before_realizing_basis_id():
 
     # Pass each subcircuit through the pass manager.
     subcircuits = {
-        label: pass_manager.run(subcircuits["A"])
+        label: pass_manager.run(subcircuits[label])
         for label, circuit in subcircuits.items()
     }
 
