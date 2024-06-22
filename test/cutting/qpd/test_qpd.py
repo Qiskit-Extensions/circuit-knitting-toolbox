@@ -44,7 +44,9 @@ from qiskit.circuit.library import (
     SwapGate,
     iSwapGate,
     DCXGate,
+    UnitaryGate,
 )
+from qiskit.quantum_info import random_unitary
 
 from circuit_knitting.utils.iteration import unique_by_eq, strict_zip
 from circuit_knitting.cutting.instructions import Move
@@ -296,6 +298,13 @@ class TestQPDFunctions(unittest.TestCase):
     @unpack
     def test_optimal_kappa_for_known_gates(self, instruction, gamma):
         assert np.isclose(qpdbasis_from_instruction(instruction).kappa, gamma)
+
+    @data(*([""] * 30))  # repeat 30 times
+    def test_kappa_within_bounds_for_random_gates(self, _):
+        gate = UnitaryGate(random_unitary(2**2))
+        basis = qpdbasis_from_instruction(gate)
+        # Corollary 3.3 of https://arxiv.org/abs/2312.11638v2
+        assert 1 <= basis.kappa < 7 + 1e-8
 
     @data(
         (RXXGate(np.pi / 7), 5, 5),

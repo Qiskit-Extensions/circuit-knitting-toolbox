@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence, Callable
 
 import numpy as np
@@ -139,7 +140,7 @@ def _explicitly_supported_instructions() -> set[str]:
     return set(_qpdbasis_from_instruction_funcs)
 
 
-def _copy_unique_sublists(lsts: tuple[list, ...], /) -> tuple[list, ...]:
+def _copy_unique_sublists(lsts: Sequence[list], /) -> tuple[list, ...]:
     """
     Copy each list in a sequence of lists while preserving uniqueness.
 
@@ -211,6 +212,7 @@ def _nonlocal_qpd_basis_from_u(
         raise ValueError(
             f"u vector has wrong shape: {u.shape} (1D vector of length 4 expected)"
         )
+    n = 4
     # The following operations are described in Sec. 2.3 of
     # https://quantum-journal.org/papers/q-2021-01-28-388/
     #
@@ -237,79 +239,73 @@ def _nonlocal_qpd_basis_from_u(
     # Projective measurements, each followed by the proper flip.
     Bxy = A0z + [XGate()]
     Byz = A0x + [YGate()]
-    Bzx = A0y + [ZGate()]
+    Bxz = [ZGate()] + A0y
+    # Construct "A" and "B" channels from
+    # https://quantum-journal.org/papers/q-2021-01-28-388/
+    #
+    # If length 1, will be passed with coefficient 1.  If length 2, will be
+    # interpreted as a linear combination with coefficients +1/2 and -1/2.
+    A = {
+        (0, 1): (A0x,),
+        (0, 2): (A0y,),
+        (0, 3): (A0z,),
+        (1, 2): (Axyp, Axym),
+        (2, 3): (Ayzp, Ayzm),
+        (1, 3): (Azxp, Azxm),
+    }
+    B = {
+        (0, 1): (B0xp, B0xm),
+        (0, 2): (B0yp, B0ym),
+        (0, 3): (B0zp, B0zm),
+        (1, 2): (Bxy,),
+        (2, 3): (Byz,),
+        (1, 3): (Bxz,),
+    }
+
     # The following values occur repeatedly in the coefficients
-    uu01 = u[0] * np.conj(u[1])
-    uu02 = u[0] * np.conj(u[2])
-    uu03 = u[0] * np.conj(u[3])
-    uu12 = u[1] * np.conj(u[2])
-    uu23 = u[2] * np.conj(u[3])
-    uu31 = u[3] * np.conj(u[1])
-    coeffs, maps1, maps2 = zip(
-        # First line of Eq. (19) in
-        # https://quantum-journal.org/papers/q-2021-01-28-388/
-        (np.abs(u[0]) ** 2, [], []),  # Identity
-        (np.abs(u[1]) ** 2, [XGate()], [XGate()]),
-        (np.abs(u[2]) ** 2, [YGate()], [YGate()]),
-        (np.abs(u[3]) ** 2, [ZGate()], [ZGate()]),
-        # Second line
-        (2 * np.real(uu01), A0x, A0x),
-        (2 * np.real(uu02), A0y, A0y),
-        (2 * np.real(uu03), A0z, A0z),
-        (0.5 * np.real(uu12), Axyp, Axyp),
-        (-0.5 * np.real(uu12), Axyp, Axym),
-        (-0.5 * np.real(uu12), Axym, Axyp),
-        (0.5 * np.real(uu12), Axym, Axym),
-        (0.5 * np.real(uu23), Ayzp, Ayzp),
-        (-0.5 * np.real(uu23), Ayzp, Ayzm),
-        (-0.5 * np.real(uu23), Ayzm, Ayzp),
-        (0.5 * np.real(uu23), Ayzm, Ayzm),
-        (0.5 * np.real(uu31), Azxp, Azxp),
-        (-0.5 * np.real(uu31), Azxp, Azxm),
-        (-0.5 * np.real(uu31), Azxm, Azxp),
-        (0.5 * np.real(uu31), Azxm, Azxm),
-        (-0.5 * np.real(uu01), B0xp, B0xp),
-        (0.5 * np.real(uu01), B0xp, B0xm),
-        (0.5 * np.real(uu01), B0xm, B0xp),
-        (-0.5 * np.real(uu01), B0xm, B0xm),
-        (-0.5 * np.real(uu02), B0yp, B0yp),
-        (0.5 * np.real(uu02), B0yp, B0ym),
-        (0.5 * np.real(uu02), B0ym, B0yp),
-        (-0.5 * np.real(uu02), B0ym, B0ym),
-        (-0.5 * np.real(uu03), B0zp, B0zp),
-        (0.5 * np.real(uu03), B0zp, B0zm),
-        (0.5 * np.real(uu03), B0zm, B0zp),
-        (-0.5 * np.real(uu03), B0zm, B0zm),
-        (-2 * np.real(uu12), Bxy, Bxy),
-        (-2 * np.real(uu23), Byz, Byz),
-        (-2 * np.real(uu31), Bzx, Bzx),
-        # Third line
-        (np.imag(uu01), A0x, B0xp),
-        (-np.imag(uu01), A0x, B0xm),
-        (np.imag(uu01), B0xp, A0x),
-        (-np.imag(uu01), B0xm, A0x),
-        (np.imag(uu02), A0y, B0yp),
-        (-np.imag(uu02), A0y, B0ym),
-        (np.imag(uu02), B0yp, A0y),
-        (-np.imag(uu02), B0ym, A0y),
-        (np.imag(uu03), A0z, B0zp),
-        (-np.imag(uu03), A0z, B0zm),
-        (np.imag(uu03), B0zp, A0z),
-        (-np.imag(uu03), B0zm, A0z),
-        (np.imag(uu12), Axyp, Bxy),
-        (-np.imag(uu12), Axym, Bxy),
-        (np.imag(uu12), Bxy, Axyp),
-        (-np.imag(uu12), Bxy, Axym),
-        (np.imag(uu23), Ayzp, Byz),
-        (-np.imag(uu23), Ayzm, Byz),
-        (np.imag(uu23), Byz, Ayzp),
-        (-np.imag(uu23), Byz, Ayzm),
-        (np.imag(uu31), Azxp, Bzx),
-        (-np.imag(uu31), Azxm, Bzx),
-        (np.imag(uu31), Bzx, Azxp),
-        (-np.imag(uu31), Bzx, Azxm),
-    )
-    maps = list(zip(maps1, _copy_unique_sublists(maps2)))
+    uabs = np.abs(u)
+    uphi = np.angle(u)
+
+    # Initialize return arrays
+    coeffs = []
+    maps_L = []
+    maps_R = []
+
+    # Build first term in Eq. (54) of https://arxiv.org/abs/2312.11638v2
+    # (summation over k).  Equivalent to first line of Eq. (19) in
+    # https://quantum-journal.org/papers/q-2021-01-28-388/
+    pauli_channels = [
+        [],
+        [XGate()],
+        [YGate()],
+        [ZGate()],
+    ]
+    for k in range(n):
+        coeffs.append(uabs[k] ** 2)
+        maps_L.append(pauli_channels[k])
+        maps_R.append(pauli_channels[k])
+
+    # Build second term of Eq. (54) (summation over k < kprime)
+    for k in range(n):
+        for k_ in range(k + 1, n):
+            prefactor = 2 * uabs[k] * uabs[k_]
+            phi = (uphi[k] - uphi[k_]) / 2
+            phi2 = phi + math.pi / 2
+            my_A = A[k, k_]
+            my_B = B[k, k_]
+            # Loop through each combination of A and B channels
+            for f_L, channel_L in ((math.cos, my_A), (math.sin, my_B)):
+                for f_R, channel_R in ((math.cos, my_A), (math.sin, my_B)):
+                    factor0 = f_L(phi) * f_R(phi) - f_L(phi2) * f_R(phi2)
+                    # Loop through terms of the current linear combination (see above)
+                    for i, L in enumerate(channel_L):
+                        for j, R in enumerate(channel_R):
+                            factor = (-1) ** (i + j) / len(channel_L) / len(channel_R)
+                            coeffs.append(prefactor * factor0 * factor)
+                            maps_L.append(L)
+                            maps_R.append(R)
+
+    maps = list(zip(maps_L, _copy_unique_sublists(maps_R)))
     return QPDBasis(maps, coeffs)
 
 
@@ -531,7 +527,7 @@ def _(unused_gate: Move):
     prep_iminus = [Reset(), XGate(), SXdgGate()]
 
     # https://arxiv.org/abs/1904.00102v2 Eqs. (12)-(19)
-    maps1, maps2, coeffs = zip(
+    maps_L, maps_R, coeffs = zip(
         (i_measurement, prep_0, 0.5),
         (i_measurement, prep_1, 0.5),
         (x_measurement, prep_plus, 0.5),
@@ -541,5 +537,5 @@ def _(unused_gate: Move):
         (z_measurement, prep_0, 0.5),
         (z_measurement, prep_1, -0.5),
     )
-    maps = list(zip(maps1, maps2))
+    maps = list(zip(maps_L, maps_R))
     return QPDBasis(maps, coeffs)
