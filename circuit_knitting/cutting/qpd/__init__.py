@@ -24,11 +24,13 @@ from .instructions import (
     TwoQubitQPDGate,
     QPDMeasure,
 )
+from .translation import translate_qpd_gate
 
 __all__ = [
     "qpdbasis_from_instruction",
     "generate_qpd_weights",
     "decompose_qpd_instructions",
+    "translate_qpd_gate",
     "QPDBasis",
     "BaseQPDGate",
     "TwoQubitQPDGate",

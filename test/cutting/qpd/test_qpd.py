@@ -167,6 +167,17 @@ class TestQPDFunctions(unittest.TestCase):
             decomp_circ = decompose_qpd_instructions(circ, [[0]], map_ids=[0])
             circ_compare.add_register(ClassicalRegister(1, name="qpd_measurements"))
             self.assertEqual(decomp_circ, circ_compare)
+        with self.subTest("Single QPD gate with translation"):
+            eagle_basis_gate_set = {"id", "rz", "sx", "x", "measure"}
+            circ = QuantumCircuit(2)
+            qpd_basis = QPDBasis.from_instruction(RXXGate(np.pi / 3))
+            qpd_gate = TwoQubitQPDGate(qpd_basis)
+            circ.data.append(CircuitInstruction(qpd_gate, qubits=[0, 1]))
+            decomp_circ = decompose_qpd_instructions(
+                circ, [[0]], map_ids=[1], basis_gate_set="eagle"
+            )
+            for inst in decomp_circ.data:
+                assert inst.operation.name in eagle_basis_gate_set
         with self.subTest("Incorrect map index size"):
             with pytest.raises(ValueError) as e_info:
                 decomp_circ = decompose_qpd_instructions(

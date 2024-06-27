@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    The functions, :func:`.generate_qpd_experiments` and :func:`.decompose_qpd_instructions` now take an optional kwarg, ``basis_gate_set``, which may be used to specify a QPU architecture for which to translate the sampled gates during creation of the subexperiments. This is useful for users who wish to transpile their cut circuit once and have the sampled local operations in the subexperiments be specified in terms of a native gate set. This prevents the need for any transpilation of subexperiments before running on the QPU. The accepted inputs are: ``{"eagle", "heron"}``.

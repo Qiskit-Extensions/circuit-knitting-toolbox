@@ -89,7 +89,33 @@ class TestCuttingExperiments(unittest.TestCase):
             assert len(coeffs) == len(subexperiments["A"])
             for circ in subexperiments["A"]:
                 assert isinstance(circ, QuantumCircuit)
-
+        with self.subTest("translation"):
+            eagle_basis_gate_set = {"id", "rz", "sx", "x", "measure"}
+            qc = QuantumCircuit(2)
+            qc.append(
+                TwoQubitQPDGate(QPDBasis.from_instruction(CXGate()), label="cut_cx"),
+                qargs=[0, 1],
+            )
+            comp_coeffs = [
+                (0.5, WeightType.EXACT),
+                (0.5, WeightType.EXACT),
+                (0.5, WeightType.EXACT),
+                (-0.5, WeightType.EXACT),
+                (0.5, WeightType.EXACT),
+                (-0.5, WeightType.EXACT),
+            ]
+            subexperiments, coeffs = generate_cutting_experiments(
+                qc,
+                PauliList(["ZZ"]),
+                np.inf,
+                basis_gate_set="eagle",
+            )
+            assert coeffs == comp_coeffs
+            assert len(coeffs) == len(subexperiments)
+            for exp in subexperiments:
+                assert isinstance(exp, QuantumCircuit)
+                for inst in exp.data:
+                    assert inst.operation.name in eagle_basis_gate_set
         with self.subTest("test bad num_samples"):
             qc = QuantumCircuit(4)
             with pytest.raises(ValueError) as e_info:
