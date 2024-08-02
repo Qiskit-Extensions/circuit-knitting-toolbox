@@ -82,14 +82,21 @@ def generate_cutting_experiments(
             to the same cut.
         ValueError: :class:`SingleQubitQPDGate` instances are not allowed in unseparated circuits.
     """
-    if isinstance(circuits, QuantumCircuit) and not isinstance(observables, PauliList):
-        raise ValueError(
-            "If the input circuits is a QuantumCircuit, the observables must be a PauliList."
-        )
-    if isinstance(circuits, dict) and not isinstance(observables, dict):
-        raise ValueError(
-            "If the input circuits are contained in a dictionary keyed by partition labels, the input observables must also be represented by such a dictionary."
-        )
+    if observables is None:
+        # FIXME: ensure there's at least one measurement in at least one of the subsystems.
+        # And it's kind of weird, because any subcircuit without measurements does not need to be run!!
+        pass
+    else:
+        if isinstance(circuits, QuantumCircuit) and not isinstance(
+            observables, PauliList
+        ):
+            raise ValueError(
+                "If the input circuits is a QuantumCircuit, the observables must be a PauliList."
+            )
+        if isinstance(circuits, dict) and not isinstance(observables, dict):
+            raise ValueError(
+                "If the input circuits are contained in a dictionary keyed by partition labels, the input observables must also be represented by such a dictionary."
+            )
     if not num_samples >= 1:
         raise ValueError("num_samples must be at least 1.")
 
@@ -99,13 +106,16 @@ def generate_cutting_experiments(
     if isinstance(circuits, QuantumCircuit):
         is_separated = False
         subcircuit_dict: dict[Hashable, QuantumCircuit] = {"A": circuits}
-        subobservables_by_subsystem = decompose_observables(
-            observables, "A" * len(observables[0])
-        )
-        subsystem_observables = {
-            label: ObservableCollection(subobservables)
-            for label, subobservables in subobservables_by_subsystem.items()
-        }
+        if observables is None:
+            subsystem_observables = None
+        else:
+            subobservables_by_subsystem = decompose_observables(
+                observables, "A" * len(observables[0])
+            )
+            subsystem_observables = {
+                label: ObservableCollection(subobservables)
+                for label, subobservables in subobservables_by_subsystem.items()
+            }
         # Gather the unique bases from the circuit
         bases, qpd_gate_ids = _get_bases(circuits)
         subcirc_qpd_gate_ids: dict[Hashable, list[list[int]]] = {"A": qpd_gate_ids}
@@ -120,10 +130,12 @@ def generate_cutting_experiments(
         bases = _get_bases_by_partition(subcircuit_dict, subcirc_qpd_gate_ids)
 
         # Create the commuting observable groups
-        subsystem_observables = {
-            label: ObservableCollection(so) for label, so in observables.items()
-        }
-
+        if observables is None:
+            subsystem_observables = None
+        else:
+            subsystem_observables = {
+                label: ObservableCollection(so) for label, so in observables.items()
+            }
     # Sample the joint quasiprobability decomposition
     random_samples = generate_qpd_weights(bases, num_samples=num_samples)
 
@@ -144,17 +156,23 @@ def generate_cutting_experiments(
         sampled_coeff = (redundancy / num_samples) * (kappa * np.sign(actual_coeff))
         coefficients.append((sampled_coeff, weight_type))
         map_ids_tmp = map_ids
-        for label, so in subsystem_observables.items():
-            subcircuit = subcircuit_dict[label]
+        for label, subcircuit in subcircuit_dict.items():
             if is_separated:
                 map_ids_tmp = tuple(map_ids[j] for j in subcirc_map_ids[label])
-            for j, cog in enumerate(so.groups):
-                new_qc = _append_measurement_register(subcircuit, cog)
-                decompose_qpd_instructions(
-                    new_qc, subcirc_qpd_gate_ids[label], map_ids_tmp, inplace=True
+            if subsystem_observables is None:
+                new_qc = decompose_qpd_instructions(
+                    subcircuit, subcirc_qpd_gate_ids[label], map_ids_tmp, inplace=False
                 )
-                _append_measurement_circuit(new_qc, cog, inplace=True)
                 subexperiments_dict[label].append(new_qc)
+            else:
+                so = subsystem_observables[label]
+                for j, cog in enumerate(so.groups):
+                    new_qc = _append_measurement_register(subcircuit, cog)
+                    decompose_qpd_instructions(
+                        new_qc, subcirc_qpd_gate_ids[label], map_ids_tmp, inplace=True
+                    )
+                    _append_measurement_circuit(new_qc, cog, inplace=True)
+                    subexperiments_dict[label].append(new_qc)
 
     # Remove initial and final resets from the subexperiments.  This will
     # enable the `Move` operation to work on backends that don't support
