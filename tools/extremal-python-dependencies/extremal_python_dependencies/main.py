@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # This code is a Qiskit project.
 
 # (C) Copyright IBM 2022.
@@ -151,5 +150,5 @@ def _save_pyproject_toml(d: dict, inplace: bool) -> None:
         print(toml.dumps(d))
 
 
-if __name__ == "__main__":
-    app()
+def main():
+    return app()

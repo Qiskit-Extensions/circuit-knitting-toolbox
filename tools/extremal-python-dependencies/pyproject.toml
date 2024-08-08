@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "extremal-python-dependencies"
+version = "0.0.0"
+description = "A utility for installing extremal versions of dependencies for more robust testing"
+readme = "README.md"
+license = {file = "../../LICENSE.txt"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+requires-python = ">=3.8"
+
+dependencies = [
+    "toml==0.10.2",
+    "typer==0.12.3",
+]
+
+[tool.hatch.build.targets.wheel]
+only-include = [
+    "extremal_python_dependencies",
+]
+
+[project.scripts]
+extremal-python-dependencies = "extremal_python_dependencies.main:main"
