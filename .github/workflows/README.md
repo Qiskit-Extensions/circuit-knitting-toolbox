@@ -2,7 +2,7 @@
 
 This directory contains a number of workflows for use with [GitHub Actions](https://docs.github.com/actions).  They specify what standards should be expected for development of this software, including pull requests.  These workflows are designed to work out of the box for any research software prototype, especially those based on [Qiskit](https://qiskit.org/).
 
-## Styles check (`lint.yml`)
+## Lint check (`lint.yml`)
 
 This workflow checks that the code is formatted properly and follows the style guide by installing tox and running the [lint environment](/tests/#lint-environment) (`tox -e lint`).
 
@@ -12,13 +12,13 @@ This workflow installs the latest version of tox and runs [the current repositor
 
 ## Development version tests (`test_development_versions.yml`)
 
-This workflow installs tox and modifies `pyproject.toml` to use the _development_ versions of certain Qiskit packages.  For all other packages, the latest version is installed.  This workflow runs on two versions of Python: the minimum supported version and the maximum supported version.  Its purpose is to identify as soon as possible (i.e., before a Qiskit release) when changes in Qiskit will break the current repository.  This workflow runs for all code changes, as well as on a timer once per day.
+This workflow installs tox and modifies `pyproject.toml` to use the _development_ versions of certain Qiskit packages, using [extremal-python-dependencies](https://github.com/IBM/extremal-python-dependencies).  For all other packages, the latest version is installed.  This workflow runs on two versions of Python: the minimum supported version and the maximum supported version.  Its purpose is to identify as soon as possible (i.e., before a Qiskit release) when changes in Qiskit will break the current repository.  This workflow runs for all code changes, as well as on a timer once per day.
 
 ## Minimum version tests (`test_minimum_versions.yml`)
 
-This workflow first installs the minimum supported tox version (the `minversion` specified in [`tox.ini`](/tox.ini)) and then installs the _minimum_ compatible version of each package listed in `pyproject.toml`.  The purpose of this workflow is to make sure the minimum version specifiers in these files are accurate, i.e., that the tests actually pass with these versions.  This workflow uses a single Python version, typically the oldest supported version, as the minimum supported versions of each package may not be compatible with the most recent Python release.
+This workflow first installs the minimum supported tox version (the `minversion` specified in [`tox.ini`](/tox.ini)) and then installs the _minimum_ compatible version of each package listed in `pyproject.toml`, using [extremal-python-dependencies](https://github.com/IBM/extremal-python-dependencies).  The purpose of this workflow is to make sure the minimum version specifiers in these files are accurate, i.e., that the tests actually pass with these versions.  This workflow uses a single Python version, typically the oldest supported version, as the minimum supported versions of each package may not be compatible with the most recent Python release.
 
-Under the hood, this workflow uses a regular expression to change each `>=` and `~=` specifier in the requirements files to instead be `==`, as pip [does not support](https://github.com/pypa/pip/issues/8085) resolving the minimum versions of packages directly.  Unfortunately, this means that the workflow will only install the minimum version of a package if it is _explicitly_ listed in one of the requirements files with a minimum version.  For instance, a requirements file that simply lists `qiskit>=0.34` will actually install `qiskit==0.34` (i.e., the minimum version of the _meta_-package) along with the latest versions of `qiskit-terra` and `qiskit-aer`, unless their minimum versions are specified explicitly as well.
+Under the hood, this workflow uses a regular expression to change each `>=` and `~=` specifier in the dependencies to instead be `==`, as pip [does not support](https://github.com/pypa/pip/issues/8085) resolving the minimum versions of packages directly.  Unfortunately, this means that the workflow will only install the minimum version of a package if it is _explicitly_ listed in one of the requirements files with a minimum version.  For instance, if the only listed dependency is `qiskit>=1.0`, this workflow will install `qiskit==1.0` along with the latest version of each transitive dependency, such as `rustworkx`.
 
 ## Code coverage (`coverage.yml`)
 

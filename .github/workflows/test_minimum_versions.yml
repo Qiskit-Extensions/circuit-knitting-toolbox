@@ -31,11 +31,6 @@ jobs:
           python -m pip install extremal-python-dependencies==0.0.3
           pip install "tox==$(extremal-python-dependencies get-tox-minversion)"
           extremal-python-dependencies pin-dependencies-to-minimum --inplace
-      - name: Modify tox.ini for more thorough check
-        shell: bash
-        run: |
-          sed -i.bak -E '/#.*CI:[[:space:]]*skip-next-line/I{N;d;}' tox.ini
-          cat tox.ini
       - name: Test using tox environment
         shell: bash
         run: |

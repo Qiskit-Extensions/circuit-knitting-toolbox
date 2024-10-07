@@ -35,11 +35,6 @@ jobs:
               "qiskit @ git+https://github.com/Qiskit/qiskit.git" \
               "qiskit-ibm-runtime @ git+https://github.com/Qiskit/qiskit-ibm-runtime.git" \
               --inplace
-      - name: Modify tox.ini for more thorough check
-        shell: bash
-        run: |
-          sed -i.bak -E '/#.*CI:[[:space:]]*skip-next-line/I{N;d;}' tox.ini
-          cat tox.ini
       - name: Test using tox environment
         shell: bash
         run: |
