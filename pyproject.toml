@@ -30,9 +30,7 @@ dependencies = [
     "numpy>=1.23.0",
     "scipy>=1.5.2",
     "rustworkx>=0.14.0",
-    "qiskit-aer>=0.14.0.1",
     "qiskit>=1.1.0, <2.0",
-    "qiskit-ibm-runtime>=0.24.0",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +44,8 @@ basetest = [
 test = [
     "qiskit-addon-cutting[basetest]",
     "ddt>=1.4.4",
+    "qiskit-aer>=0.14.0.1",
+    "qiskit-ibm-runtime>=0.24.0",
 ]
 nbtest = [
     "qiskit-addon-cutting[basetest]",
